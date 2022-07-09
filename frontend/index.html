@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://esm.sh/xterm@4.19.0/css/xterm.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xterm@4.19.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js"></script>
+    <title>XtermJS</title>
+    <style>
+        body {
+            margin: 0;
+        }
+        #terminal {
+            height: 100vh;
+        }
+        #terminal > .terminal {
+            padding: 5px;
+            height: calc(100% - 10px);
+        }
+    </style>
+</head>
+<body>
+    <div id="terminal"></div>
+    <script src="/main.js" type="module"></script>
+</body>
+</html>

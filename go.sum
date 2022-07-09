@@ -1,0 +1,6 @@
+github.com/azurity/go-onefile v0.0.0-20220627085546-ed66fdd30b6c h1:XvhE+vPHqSLsX/BP107HRLY1rNlpC5Xsk+QaiPQN1xg=
+github.com/azurity/go-onefile v0.0.0-20220627085546-ed66fdd30b6c/go.mod h1:X4grlnjUiwTaysPoKcw8tt4Yb5niUPT328DO9fva3zg=
+github.com/creack/pty v1.1.18 h1:n56/Zwd5o6whRC5PMGretI4IdRLlmBXYNjScPaBgsbY=
+github.com/creack/pty v1.1.18/go.mod h1:MOBLtS5ELjhRRrroQr9kyvTxUAFNvYEK993ew/Vr4O4=
+github.com/gorilla/websocket v1.5.0 h1:PPwGk2jz7EePpoHN/+ClbZu8SPxiqlu12wZP/3sWmnc=
+github.com/gorilla/websocket v1.5.0/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
