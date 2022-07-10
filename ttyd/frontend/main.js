@@ -6,7 +6,7 @@ const wsProtocol = document.location.protocol == 'https:' ? 'wss:' : 'ws:';
 const socket = new WebSocket(`${wsProtocol}//${document.location.host}/ws`);
 
 let term = new Terminal({
-    fontFamily: 'GoMonoRegular, GoMono Nerd Font',
+    fontFamily: 'GoMono Nerd Font',
 });
 const fitAddon = new FitAddon.FitAddon();
 const uincode11Addon = new Unicode11Addon.Unicode11Addon();
