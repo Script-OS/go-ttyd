@@ -25,8 +25,19 @@ func ws(w http.ResponseWriter, r *http.Request, gen CmdGenerator) {
 		return
 	}
 	go func() {
-		defer c.Close()
-		ServePTY(c, gen())
+		defer func() {
+			_ = c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		}()
+		log.Println("client connect")
+		c.SetCloseHandler(func(code int, text string) error {
+			log.Printf("client disconnect, reason: %d\n", code)
+			_ = c.Close()
+			return nil
+		})
+		err := ServePTY(c, gen())
+		if err != nil {
+			log.Println(err)
+		}
 	}()
 }
 

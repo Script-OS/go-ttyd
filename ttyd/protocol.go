@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	PROTOCOL_DATA int = 1
-	PROTOCOL_SIZE     = 2
+	PROTOCOL_DATA uint32 = 1
+	PROTOCOL_SIZE        = 2
 )
 
 type SizeMeta struct {
@@ -25,7 +25,7 @@ func (c *WsProtocol) Recv() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	t := int(binary.LittleEndian.Uint32(msg[0:4]))
+	t := binary.LittleEndian.Uint32(msg[0:4])
 	switch t {
 	case PROTOCOL_DATA:
 		return msg[4:], nil

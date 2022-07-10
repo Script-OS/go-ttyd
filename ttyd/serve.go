@@ -23,17 +23,20 @@ func ServePTY(c *websocket.Conn, cmd *exec.Cmd) error {
 	if err != nil {
 		return err
 	}
+	defer ptyFile.Close()
 	go func() {
+		defer cmd.Process.Kill()
 		for {
 			msg, err := conn.Recv()
-			if err != nil {
+			if _, ok := err.(*websocket.CloseError); ok {
+				break
+			} else if err != nil {
 				logError(err)
 				break
 			}
 			if data, ok := msg.([]byte); ok {
 				_, err = ptyFile.Write(data)
 				if err != nil {
-					logError(err)
 					break
 				}
 			} else if data, ok := msg.(*SizeMeta); ok {
@@ -44,20 +47,25 @@ func ServePTY(c *websocket.Conn, cmd *exec.Cmd) error {
 			}
 		}
 	}()
-	buf := make([]byte, 1024)
-	for {
-		n, err := ptyFile.Read(buf)
-		if n > 0 {
-			err = c.WriteMessage(websocket.BinaryMessage, buf[:n])
+	go func() {
+		defer cmd.Process.Kill()
+		buf := make([]byte, 1024)
+		for {
+			n, err := ptyFile.Read(buf)
+			if n > 0 {
+				err = c.WriteMessage(websocket.BinaryMessage, buf[:n])
+				if _, ok := err.(*websocket.CloseError); ok {
+					break
+				} else if err != nil {
+					logError(err)
+					break
+				}
+			}
 			if err != nil {
-				logError(err)
 				break
 			}
 		}
-		if err != nil {
-			logError(err)
-			break
-		}
-	}
+	}()
+	_ = cmd.Wait()
 	return nil
 }
