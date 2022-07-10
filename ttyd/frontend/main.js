@@ -5,15 +5,20 @@
 const wsProtocol = document.location.protocol == 'https:' ? 'wss:' : 'ws:';
 const socket = new WebSocket(`${wsProtocol}//${document.location.host}/ws`);
 
-let term = new Terminal();
+let term = new Terminal({
+    fontFamily: 'GoMonoRegular, GoMono Nerd Font',
+});
 const fitAddon = new FitAddon.FitAddon();
-term.loadAddon(fitAddon);
+const uincode11Addon = new Unicode11Addon.Unicode11Addon();
+// const webglAddon = new WebglAddon.WebglAddon();
 
 // Connection opened
 socket.addEventListener('open', function (event) {
     term.open(document.getElementById('terminal'));
+    term.loadAddon(fitAddon);
+    term.loadAddon(uincode11Addon);
+    // term.loadAddon(webglAddon);
     fitAddon.fit();
-    // socket.send('Hello Server!');
 });
 
 // Listen for messages

@@ -6,7 +6,6 @@ import (
 	"go-ttyd/ttyd"
 	"log"
 	"net/http"
-	"os"
 	"os/exec"
 )
 
@@ -18,9 +17,9 @@ func main() {
 		OtherFS: nil,
 		Gen: func() *exec.Cmd {
 			cmd := exec.Command(cmdDesc[0], cmdDesc[1:]...)
-			cmd.Env = append(os.Environ(),
-				"TERM=xterm-webmedia-256color",
-			)
+			//cmd.Env = append(os.Environ(),
+			//	"TERM=xterm-webmedia-256color",
+			//)
 			return cmd
 		},
 	})
