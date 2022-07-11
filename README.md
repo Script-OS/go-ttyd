@@ -4,7 +4,7 @@ Share your terminal over the web
 
 ## Demo
 
- [demo.gif](images/demo.gif) 
+ ![demo.gif](images/demo.gif) 
 
 ## Features
 
