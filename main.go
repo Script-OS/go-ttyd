@@ -32,7 +32,7 @@ func Redirect(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	port := flag.Int("p", 80, "port that http serve on")
+	port := flag.Int("p", 0, "port that http serve on")
 	SSL := flag.Bool("SSL", false, "open SSL or not, default is true")
 
 	flag.Parse()
