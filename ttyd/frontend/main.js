@@ -12,9 +12,103 @@ const fitAddon = new FitAddon.FitAddon();
 const uincode11Addon = new Unicode11Addon.Unicode11Addon();
 // const webglAddon = new WebglAddon.WebglAddon();
 
+let LinkSet = [];
+
+const MarkerContent = document.getElementById("media");//document.createElement("div");
+
+term.parser.registerOscHandler(9999, function (payload) {
+    if (payload == "") {
+        LinkSet = [];
+        MarkerContent.innerHTML = "";
+        return true;
+    }
+    let parts = payload.split(';');
+    if (parts.length >= 1) {
+        let type = parts[0];
+        switch (type) {
+            case 'link':
+                {
+                    let len = parseInt(parts[1]);
+                    let link = parts.slice(2).join(';');
+                    let x = term.buffer.active.cursorX;
+                    let y = term.buffer.active.baseY + term.buffer.active.cursorY;
+                    LinkSet.push({
+                        x, y, len, link,
+                    });
+                }
+                break;
+            case 'media':
+                {
+                    let text = atob(parts[1]);
+                    let lines = parseInt(parts[2]);
+                    let url = parts.slice(3).join(';');
+                    let y = term.buffer.active.baseY + term.buffer.active.cursorY;
+                    let CellHeight = term._core._renderService.dimensions.actualCellHeight;
+                    fetch(url, { method: 'HEAD' }).then((res) => {
+                        let contentType = res.headers.get('content-type');
+                        let mediaType = contentType.split('/')[0];
+
+                        let media = document.createElement("div");
+                        media.style.height = `${CellHeight * lines}px`;
+                        media.style.position = 'absolute';
+                        media.style.top = `${CellHeight * (y + 1)}px`;
+                        media.style.left = `32px`;
+
+                        if (mediaType == 'image') {
+                            media.innerHTML = `<image src="${url}" alt="${text}" height="${CellHeight * lines}">`;
+                            media.onclick = function () {
+                                window.open(url, "_blank");
+                            }
+                        } else if (mediaType == 'video') {
+                            media.innerHTML = `<video controls src="${url}" alt="${text}" height="${CellHeight * lines}">`;
+                        }
+                        MarkerContent.appendChild(media);
+                    });
+                }
+                break;
+        }
+    }
+    return true;
+});
+
+term.registerLinkProvider({
+    provideLinks(y, callback) {
+        let links = [];
+        for (let link of LinkSet) {
+            if (link.y == y - 1) {
+                links.push({
+                    range: {
+                        start: { x: link.x + 1, y },
+                        end: { x: link.x + link.len, y },
+                    },
+                    text: link.link,
+                    activate() {
+                        window.open(link.link, "_blank");
+                    }
+                });
+            }
+        }
+        if (links.length > 0) {
+            callback(links);
+        } else {
+            callback(undefined);
+        }
+    }
+});
+
+function RefreshScroll() {
+    let viewport = document.querySelector('.xterm-scroll-area');
+    const CellHeight = term._core._renderService.dimensions.actualCellHeight;
+    MarkerContent.parentElement.scrollTop = Math.round(viewport.parentElement.scrollTop / CellHeight) * CellHeight;
+    MarkerContent.style.height = viewport.style.height;
+}
+
 // Connection opened
 socket.addEventListener('open', function (event) {
     term.open(document.getElementById('terminal'));
+    document.querySelector(".xterm-screen").insertBefore(MarkerContent.parentElement, document.querySelector(".xterm-decoration-container"));
+    let viewport = document.querySelector('.xterm-scroll-area');
+    viewport.parentElement.addEventListener("scroll", RefreshScroll);
     term.loadAddon(fitAddon);
     term.loadAddon(uincode11Addon);
     // term.loadAddon(webglAddon);
@@ -27,6 +121,8 @@ socket.addEventListener('message', async function (event) {
     // let arr = new Uint8Array(await event.data.arrayBuffer());
     // console.log('Message from server:', new TextDecoder().decode(arr));
 });
+
+term.onRender(RefreshScroll);
 
 const encoder = new TextEncoder();
 
@@ -41,7 +137,7 @@ term.onData((chunk) => {
 term.onBinary((chunk) => {
     let buffer = new Uint8Array(4 + chunk.length);
     buffer.set(new Uint32Array([1]), 0);
-    for (let i =0;i<chunk.length;i++) {
+    for (let i = 0; i < chunk.length; i++) {
         buffer[i + 4] = chunk.charCodeAt(i);
     }
     socket.send(buffer);

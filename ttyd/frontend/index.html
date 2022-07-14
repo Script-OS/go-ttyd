@@ -26,10 +26,28 @@
             padding: 5px;
             height: calc(100% - 10px);
         }
+        .media-layer {
+            overflow: hidden;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            z-index: 4;
+        }
+        .media-layer > div {
+            position: relative;
+            width: 100%;
+        }
+        .media-layer > div > * {
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
     <div id="terminal"></div>
+    <div class="media-layer">
+        <div id="media"></div>
+    </div>
     <script src="/main.js" type="module"></script>
 </body>
 </html>
