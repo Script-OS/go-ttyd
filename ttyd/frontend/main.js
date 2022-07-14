@@ -19,7 +19,9 @@ const MarkerContent = document.getElementById("media");//document.createElement(
 term.parser.registerOscHandler(9999, function (payload) {
     if (payload == "") {
         LinkSet = [];
-        MarkerContent.innerHTML = "";
+        for (let it of MarkerContent.children) {
+            it.style.display = 'none';
+        }
         return true;
     }
     let parts = payload.split(';');
@@ -39,32 +41,49 @@ term.parser.registerOscHandler(9999, function (payload) {
                 break;
             case 'media':
                 {
-                    let text = atob(parts[1]);
-                    let lines = parseInt(parts[2]);
-                    let url = parts.slice(3).join(';');
+                    let id = parts[1];
+                    let text = atob(parts[2]);
+                    let lines = parseInt(parts[3]);
+                    let url = parts.slice(4).join(';');
                     let y = term.buffer.active.baseY + term.buffer.active.cursorY;
                     let CellHeight = term._core._renderService.dimensions.actualCellHeight;
-                    fetch(url, { method: 'HEAD' }).then((res) => {
-                        let contentType = res.headers.get('content-type');
-                        let mediaType = contentType.split('/')[0];
 
-                        let media = document.createElement("div");
+                    id = 'media-content-' + id;
+
+                    let media = document.getElementById(id);
+
+                    if (media == null) {
+                        media = document.createElement("div");
                         media.style.height = `${CellHeight * lines}px`;
                         media.style.position = 'absolute';
-                        media.style.top = `${CellHeight * (y + 1)}px`;
                         media.style.left = `32px`;
-
-                        if (mediaType == 'image') {
-                            media.innerHTML = `<image src="${url}" alt="${text}" height="${CellHeight * lines}">`;
-                            media.onclick = function () {
-                                window.open(url, "_blank");
-                            }
-                        } else if (mediaType == 'video') {
-                            media.innerHTML = `<video controls src="${url}" alt="${text}" height="${CellHeight * lines}">`;
-                        }
+                        media.id = id;
                         MarkerContent.appendChild(media);
-                    });
+
+                        fetch(url, { method: 'HEAD' }).then((res) => {
+                            let contentType = res.headers.get('content-type');
+                            let mediaType = contentType.split('/')[0];
+
+                            let media = document.getElementById(id);
+                            if (media == null) {
+                                return;
+                            }
+                            if (mediaType == 'image') {
+                                media.innerHTML = `<image src="${url}" alt="${text}" height="${CellHeight * lines}">`;
+                                media.onclick = function () {
+                                    window.open(url, "_blank");
+                                }
+                            } else if (mediaType == 'video') {
+                                media.innerHTML = `<video controls src="${url}" alt="${text}" height="${CellHeight * lines}">`;
+                            }
+                        });
+                    }
+                    media.style.top = `${CellHeight * (y + 1)}px`;
+                    media.style.display = 'block';
                 }
+                break;
+            case 'cleanMedia':
+                MarkerContent.innerHTML = "";
                 break;
         }
     }
