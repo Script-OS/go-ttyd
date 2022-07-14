@@ -61,7 +61,7 @@ func main() {
 		go func() {
 			http.ListenAndServe(":80", http.HandlerFunc(Redirect))
 		}()
-		log.Fatal(http.ListenAndServeTLS(portString, "tls.crt", "tls.key", tty))
+		log.Fatal(http.ListenAndServeTLS(portString, "https.crt", "https.key", tty))
 	} else {
 		if *port == 0 {
 			portString = fmt.Sprintf(":%d", 80)
