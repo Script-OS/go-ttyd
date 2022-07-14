@@ -38,6 +38,15 @@ term.onData((chunk) => {
     socket.send(buffer);
 });
 
+term.onBinary((chunk) => {
+    let buffer = new Uint8Array(4 + chunk.length);
+    buffer.set(new Uint32Array([1]), 0);
+    for (let i =0;i<chunk.length;i++) {
+        buffer[i + 4] = chunk.charCodeAt(i);
+    }
+    socket.send(buffer);
+});
+
 term.onResize((data) => {
     let encoded = encoder.encode(JSON.stringify(data));
     let buffer = new Uint8Array(4 + encoded.length);
