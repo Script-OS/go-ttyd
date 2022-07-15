@@ -175,6 +175,10 @@ function start() {
     });
 
     term.onRender(RefreshScroll);
+
+    term.onTitleChange(function (title) {
+        document.title = title;
+    });
 }
 
 const params = new Map((window.location.search || "?").slice(1).split('&').filter(it => it != '').map((it) => it.split('=').map(it => decodeURIComponent(it))));
