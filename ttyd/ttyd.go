@@ -1,6 +1,7 @@
 package ttyd
 
 import (
+	"encoding/json"
 	"github.com/azurity/go-onefile"
 	"github.com/gorilla/websocket"
 	"github.com/laher/mergefs"
@@ -42,8 +43,8 @@ func ws(w http.ResponseWriter, r *http.Request, gen CmdGenerator) {
 }
 
 type Config struct {
-	OtherFS fs.FS
-	Gen     CmdGenerator
+	OtherFSList []fs.FS
+	Gen         CmdGenerator
 }
 
 func NewTTYd(conf Config) *TTYd {
@@ -52,8 +53,10 @@ func NewTTYd(conf Config) *TTYd {
 	}
 	frontend, _ := fs.Sub(frontendFS, "frontend")
 	serveFS := frontend
-	if conf.OtherFS != nil {
-		serveFS = mergefs.Merge(frontend, conf.OtherFS)
+	fsList := []fs.FS{frontend, ConfigFS}
+	if conf.OtherFSList != nil {
+		fsList = append(fsList, conf.OtherFSList...)
+		serveFS = mergefs.Merge(fsList...)
 	}
 	ttyd.mux.Handle("/", onefile.New(serveFS, &onefile.Overwrite{
 		Fsys: nil,
@@ -61,6 +64,17 @@ func NewTTYd(conf Config) *TTYd {
 	}, "/index.html"))
 	ttyd.mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		ws(w, r, conf.Gen)
+	})
+	ttyd.mux.HandleFunc("/themes.json", func(w http.ResponseWriter, r *http.Request) {
+		themes := ThemeList()
+		encoded, err := json.Marshal(&themes)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+		} else {
+			w.WriteHeader(http.StatusOK)
+			w.Write(encoded)
+		}
 	})
 	return ttyd
 }

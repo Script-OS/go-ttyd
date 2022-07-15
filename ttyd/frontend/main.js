@@ -1,22 +1,9 @@
-// import { default as xterm } from 'https://cdn.jsdelivr.net/npm/xterm@4.19.0/lib/xterm.js'
-
-// debugger
-
 const wsProtocol = document.location.protocol == 'https:' ? 'wss:' : 'ws:';
-const socket = new WebSocket(`${wsProtocol}//${document.location.host}/ws`);
-
-let term = new Terminal({
-    fontFamily: 'GoMono Nerd Font',
-});
-const fitAddon = new FitAddon.FitAddon();
-const uincode11Addon = new Unicode11Addon.Unicode11Addon();
-// const webglAddon = new WebglAddon.WebglAddon();
 
 let LinkSet = [];
+const MarkerContent = document.getElementById("media");
 
-const MarkerContent = document.getElementById("media");//document.createElement("div");
-
-term.parser.registerOscHandler(9999, function (payload) {
+function OSCHandler(payload) {
     if (payload == "") {
         LinkSet = [];
         for (let it of MarkerContent.children) {
@@ -88,9 +75,9 @@ term.parser.registerOscHandler(9999, function (payload) {
         }
     }
     return true;
-});
+}
 
-term.registerLinkProvider({
+const LinkProvider = {
     provideLinks(y, callback) {
         let links = [];
         for (let link of LinkSet) {
@@ -113,7 +100,7 @@ term.registerLinkProvider({
             callback(undefined);
         }
     }
-});
+};
 
 function RefreshScroll() {
     let viewport = document.querySelector('.xterm-scroll-area');
@@ -122,58 +109,93 @@ function RefreshScroll() {
     MarkerContent.style.height = viewport.style.height;
 }
 
-// Connection opened
-socket.addEventListener('open', function (event) {
-    term.open(document.getElementById('terminal'));
-    document.querySelector(".xterm-screen").insertBefore(MarkerContent.parentElement, document.querySelector(".xterm-decoration-container"));
-    let viewport = document.querySelector('.xterm-scroll-area');
-    viewport.parentElement.addEventListener("scroll", RefreshScroll);
-    term.loadAddon(fitAddon);
-    term.loadAddon(uincode11Addon);
-    // term.loadAddon(webglAddon);
-    fitAddon.fit();
-});
+function start() {
+    let term = new Terminal({
+        fontFamily: 'GoMono Nerd Font',
+    });
+    const fitAddon = new FitAddon.FitAddon();
+    const uincode11Addon = new Unicode11Addon.Unicode11Addon();
+    // const webglAddon = new WebglAddon.WebglAddon();
 
-// Listen for messages
-socket.addEventListener('message', async function (event) {
-    term.write(new Uint8Array(await event.data.arrayBuffer()));
-    // let arr = new Uint8Array(await event.data.arrayBuffer());
-    // console.log('Message from server:', new TextDecoder().decode(arr));
-});
+    term.parser.registerOscHandler(9999, OSCHandler);
+    term.registerLinkProvider(LinkProvider);
 
-term.onRender(RefreshScroll);
+    const socket = new WebSocket(`${wsProtocol}//${document.location.host}/ws`);
+    // Connection opened
+    socket.addEventListener('open', function (event) {
+        term.open(document.getElementById('terminal'));
+        document.querySelector(".xterm-screen").insertBefore(MarkerContent.parentElement, document.querySelector(".xterm-decoration-container"));
+        let viewport = document.querySelector('.xterm-scroll-area');
+        viewport.parentElement.addEventListener("scroll", RefreshScroll);
+        term.loadAddon(fitAddon);
+        term.loadAddon(uincode11Addon);
+        // term.loadAddon(webglAddon);
+        fitAddon.fit();
+    });
 
-const encoder = new TextEncoder();
+    socket.addEventListener('close', function () {
+        console.log("connection closed");
+    });
 
-term.onData((chunk) => {
-    let encoded = encoder.encode(chunk);
-    let buffer = new Uint8Array(4 + encoded.length);
-    buffer.set(new Uint32Array([1]), 0);
-    buffer.set(encoded, 4);
-    socket.send(buffer);
-});
+    // Listen for messages
+    socket.addEventListener('message', async function (event) {
+        term.write(new Uint8Array(await event.data.arrayBuffer()));
+    });
 
-term.onBinary((chunk) => {
-    let buffer = new Uint8Array(4 + chunk.length);
-    buffer.set(new Uint32Array([1]), 0);
-    for (let i = 0; i < chunk.length; i++) {
-        buffer[i + 4] = chunk.charCodeAt(i);
-    }
-    socket.send(buffer);
-});
+    const encoder = new TextEncoder();
 
-term.onResize((data) => {
-    let encoded = encoder.encode(JSON.stringify(data));
-    let buffer = new Uint8Array(4 + encoded.length);
-    buffer.set(new Uint32Array([2]), 0);
-    buffer.set(encoded, 4);
-    socket.send(buffer);
-});
+    term.onData((chunk) => {
+        let encoded = encoder.encode(chunk);
+        let buffer = new Uint8Array(4 + encoded.length);
+        buffer.set(new Uint32Array([1]), 0);
+        buffer.set(encoded, 4);
+        socket.send(buffer);
+    });
 
-socket.addEventListener('close', function () {
-    console.log("connection closed");
-});
+    term.onBinary((chunk) => {
+        let buffer = new Uint8Array(4 + chunk.length);
+        buffer.set(new Uint32Array([1]), 0);
+        for (let i = 0; i < chunk.length; i++) {
+            buffer[i + 4] = chunk.charCodeAt(i);
+        }
+        socket.send(buffer);
+    });
 
-window.addEventListener('resize', function () {
-    fitAddon.fit();
+    term.onResize((data) => {
+        let encoded = encoder.encode(JSON.stringify(data));
+        let buffer = new Uint8Array(4 + encoded.length);
+        buffer.set(new Uint32Array([2]), 0);
+        buffer.set(encoded, 4);
+        socket.send(buffer);
+    });
+
+    window.addEventListener('resize', function () {
+        fitAddon.fit();
+    });
+
+    term.onRender(RefreshScroll);
+}
+
+const params = new Map((window.location.search || "?").slice(1).split('&').filter(it => it != '').map((it) => it.split('=').map(it => decodeURIComponent(it))));
+
+async function loadTheme() {
+    try {
+        if (!params.has("theme")) {
+            return;
+        }
+        let res = await fetch("/themes.json");
+        let desc = await res.json();
+        let themeFile = desc[params.get("theme")];
+        if (themeFile !== undefined) {
+            let module = await import(themeFile);
+            if (module.init != undefined) {
+                await module.init(params);
+            }
+        }
+    } catch (err) { }
+}
+
+window.addEventListener('load', async function () {
+    await loadTheme();
+    start();
 });
