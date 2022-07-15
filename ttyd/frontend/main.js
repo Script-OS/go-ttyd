@@ -2,6 +2,7 @@ const wsProtocol = document.location.protocol == 'https:' ? 'wss:' : 'ws:';
 
 let LinkSet = [];
 const MarkerContent = document.getElementById("media");
+let term = null;
 
 function OSCHandler(payload) {
     if (payload == "") {
@@ -110,7 +111,7 @@ function RefreshScroll() {
 }
 
 function start() {
-    let term = new Terminal({
+    term = new Terminal({
         fontFamily: 'GoMono Nerd Font',
     });
     const fitAddon = new FitAddon.FitAddon();
