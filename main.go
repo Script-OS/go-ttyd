@@ -46,6 +46,7 @@ func (arr *StringArray) Set(value string) error {
 
 func main() {
 	port := flag.Int("p", 0, "port that http serve on")
+	theme := flag.String("theme", "", "default theme")
 	SSL := flag.Bool("SSL", false, "open SSL or not, default is true")
 	crtFile := flag.String("crt", "https.crt", "path to https crt file")
 	keyFile := flag.String("key", "https.key", "path to https key file")
@@ -61,6 +62,8 @@ func main() {
 	for _, path := range statics {
 		fsList = append(fsList, os.DirFS(path))
 	}
+
+	ttyd.DefaultTheme = *theme
 
 	tty := ttyd.NewTTYd(ttyd.Config{
 		OtherFSList: fsList,

@@ -10,6 +10,8 @@ import (
 
 var ConfigFS fs.FS
 
+var DefaultTheme = ""
+
 func init() {
 	confDir, err := os.UserConfigDir()
 	if err != nil {
@@ -27,7 +29,7 @@ func init() {
 }
 
 func ThemeList() map[string]string {
-	ret := map[string]string{}
+	ret := map[string]string{".": DefaultTheme}
 	if _, err := fs.Stat(ConfigFS, "themes"); err != nil {
 		return ret
 	}

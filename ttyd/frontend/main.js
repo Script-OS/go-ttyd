@@ -185,12 +185,13 @@ const params = new Map((window.location.search || "?").slice(1).split('&').filte
 
 async function loadTheme() {
     try {
-        if (!params.has("theme")) {
-            return;
-        }
         let res = await fetch("/themes.json");
         let desc = await res.json();
-        let themeFile = desc[params.get("theme")];
+        let theme = desc["."];
+        if (params.has("theme")) {
+            theme = params.get("theme");
+        }
+        let themeFile = desc[theme];
         if (themeFile !== undefined) {
             let module = await import(themeFile);
             if (module.init != undefined) {
