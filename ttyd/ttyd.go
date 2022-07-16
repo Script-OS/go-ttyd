@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os/exec"
+	"sync/atomic"
 )
 
 type TTYd struct {
@@ -19,7 +20,7 @@ type CmdGenerator func() *exec.Cmd
 
 var upgrader = websocket.Upgrader{} // use default options
 
-func ws(w http.ResponseWriter, r *http.Request, gen CmdGenerator) {
+func ws(w http.ResponseWriter, r *http.Request, gen CmdGenerator, connCounter *int32, max int32) {
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Print("upgrade:", err)
@@ -35,8 +36,17 @@ func ws(w http.ResponseWriter, r *http.Request, gen CmdGenerator) {
 			_ = c.Close()
 			return nil
 		})
+		count := atomic.AddInt32(connCounter, 1)
+		defer atomic.AddInt32(connCounter, -1)
+		if max > 0 && count > max {
+			err := "The number of connections reaches max threshold."
+			_ = c.WriteMessage(websocket.BinaryMessage, []byte("\x1b[31m"+err+"\x1b[0m"))
+			log.Println(err)
+			return
+		}
 		err := ServePTY(c, gen())
 		if err != nil {
+			_ = c.WriteMessage(websocket.BinaryMessage, []byte("\x1b[31m"+"Unable to start target program."+"\x1b[0m"))
 			log.Println(err)
 		}
 	}()
@@ -45,12 +55,17 @@ func ws(w http.ResponseWriter, r *http.Request, gen CmdGenerator) {
 type Config struct {
 	OtherFSList []fs.FS
 	Gen         CmdGenerator
+	MaxConn     int32
 }
 
 func NewTTYd(conf Config) *TTYd {
 	ttyd := &TTYd{
 		mux: http.NewServeMux(),
 	}
+	if conf.MaxConn < 0 {
+		conf.MaxConn = 0
+	}
+	connCounter := int32(0)
 	frontend, _ := fs.Sub(frontendFS, "frontend")
 	serveFS := frontend
 	fsList := []fs.FS{frontend, ConfigFS}
@@ -63,7 +78,7 @@ func NewTTYd(conf Config) *TTYd {
 		Pair: map[string]string{},
 	}, "/index.html"))
 	ttyd.mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		ws(w, r, conf.Gen)
+		ws(w, r, conf.Gen, &connCounter, conf.MaxConn)
 	})
 	ttyd.mux.HandleFunc("/themes.json", func(w http.ResponseWriter, r *http.Request) {
 		themes := ThemeList()

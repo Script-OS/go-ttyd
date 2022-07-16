@@ -50,6 +50,7 @@ func main() {
 	SSL := flag.Bool("SSL", false, "open SSL or not, default is true")
 	crtFile := flag.String("crt", "https.crt", "path to https crt file")
 	keyFile := flag.String("key", "https.key", "path to https key file")
+	max := flag.Int("max", 0, "max number of connections, 0 means no limit")
 	statics := StringArray{}
 	flag.Var(&statics, "static", "folder to provide extra static files")
 
@@ -75,6 +76,7 @@ func main() {
 			)
 			return cmd
 		},
+		MaxConn: int32(*max),
 	})
 	portString := fmt.Sprintf(":%d", *port)
 	_, crtErr := os.Stat(*crtFile)
