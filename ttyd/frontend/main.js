@@ -112,7 +112,7 @@ function RefreshScroll() {
 
 function start() {
     term = new Terminal({
-        fontFamily: 'GoMono Nerd Font',
+        fontFamily: globalThis.RenderFonts.join(', '),
     });
     const fitAddon = new FitAddon.FitAddon();
     const uincode11Addon = new Unicode11Addon.Unicode11Addon();
@@ -201,7 +201,28 @@ async function loadTheme() {
     } catch (err) { }
 }
 
+async function loadTermFont(fontFamily, descList) {
+    for (let desc of descList) {
+        let font = new FontFace(fontFamily, `url(${desc.url})`, desc.desc);
+        await font.load();
+        document.fonts.add(font);
+    }
+    globalThis.RenderFonts.push(JSON.stringify(fontFamily));
+}
+
+globalThis.loadTermFont = loadTermFont;
+globalThis.RenderFonts = [];
+
 window.addEventListener('load', async function () {
+    await loadTermFont("PureNerdFont", [{ url: "https://unpkg.com/@azurity/pure-nerd-font@1.0.0/PureNerdFont.woff2" }]);
     await loadTheme();
+    if (globalThis.RenderFonts.length == 1) {
+        // only nerd-font prepared, use go mono as default font
+        await loadTermFont("GoMono", [
+            { url: "https://www.programmingfonts.org/fonts/resources/go-mono/go-mono.ttf", desc: { stretch: 'normal', style: 'normal', weight: '400' } },
+            { url: "https://www.programmingfonts.org/fonts/resources/go-mono/go-mono-italic.ttf", desc: { stretch: 'normal', style: 'italic', weight: '400' } },
+            { url: "https://www.programmingfonts.org/fonts/resources/go-mono/go-mono-bold.ttf", desc: { stretch: 'normal', style: 'normal', weight: '700' } },
+        ]);
+    }
     start();
 });
