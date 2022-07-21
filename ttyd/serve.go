@@ -3,7 +3,6 @@ package ttyd
 import (
 	"github.com/creack/pty"
 	"github.com/gorilla/websocket"
-	"log"
 	"os/exec"
 	"runtime"
 )
@@ -11,9 +10,9 @@ import (
 func logError(err error) {
 	_, path, line, ok := runtime.Caller(1)
 	if !ok {
-		log.Println(err)
+		Logger.Println(err)
 	} else {
-		log.Printf("[%s:%d] %s\n", path, line, err.Error())
+		Logger.Printf("[%s:%d] %s\n", path, line, err.Error())
 	}
 }
 

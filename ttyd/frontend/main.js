@@ -183,21 +183,28 @@ function start() {
 
 const params = new Map((window.location.search || "?").slice(1).split('&').filter(it => it != '').map((it) => it.split('=').map(it => decodeURIComponent(it))));
 
-async function loadTheme() {
+async function loadTheme(theme) {
+    let themeFile = globalThis.ThemeList[theme];
+    if (themeFile !== undefined) {
+        let module = await import(themeFile);
+        if (module.init instanceof Function) {
+            await module.init(params);
+        }
+    }
+}
+
+globalThis.loadTheme = loadTheme;
+
+async function prepareTheme() {
     try {
         let res = await fetch("/themes.json");
         let desc = await res.json();
+        globalThis.ThemeList = desc;
         let theme = desc["."];
         if (params.has("theme")) {
             theme = params.get("theme");
         }
-        let themeFile = desc[theme];
-        if (themeFile !== undefined) {
-            let module = await import(themeFile);
-            if (module.init != undefined) {
-                await module.init(params);
-            }
-        }
+        await loadTheme(theme);
     } catch (err) { }
 }
 
@@ -215,7 +222,7 @@ globalThis.RenderFonts = [];
 
 window.addEventListener('load', async function () {
     await loadTermFont("PureNerdFont", [{ url: "https://unpkg.com/@azurity/pure-nerd-font@1.0.0/PureNerdFont.woff2" }]);
-    await loadTheme();
+    await prepareTheme();
     if (globalThis.RenderFonts.length == 1) {
         // only nerd-font prepared, use go mono as default font
         await loadTermFont("GoMono", [

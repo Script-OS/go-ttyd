@@ -6,11 +6,36 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/laher/mergefs"
 	"io/fs"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"sync/atomic"
 )
+
+var ConfigFS fs.FS
+
+var Logger = log.New(os.Stderr, "", log.LstdFlags)
+
+func init() {
+	confDir, err := os.UserConfigDir()
+	if err != nil {
+		Logger.Panicln(err)
+	}
+	confDir = filepath.Join(confDir, "go-ttyd")
+	if _, err := os.Stat(confDir); os.IsNotExist(err) {
+		err := os.MkdirAll(confDir, 0777)
+		if err != nil {
+			Logger.Panicln(err)
+		}
+	}
+
+	ConfigFS = os.DirFS(confDir)
+
+	mergefs.Logger.SetOutput(ioutil.Discard)
+}
 
 type TTYd struct {
 	mux *http.ServeMux
@@ -23,13 +48,13 @@ var upgrader = websocket.Upgrader{} // use default options
 func ws(w http.ResponseWriter, r *http.Request, gen CmdGenerator, connCounter *int32, max int32) {
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Print("upgrade:", err)
+		Logger.Print("upgrade:", err)
 		return
 	}
 	go func() {
-		log.Println("client connect")
+		Logger.Println("client connect")
 		c.SetCloseHandler(func(code int, text string) error {
-			log.Printf("client disconnect, reason: %d\n", code)
+			Logger.Printf("client disconnect, reason: %d\n", code)
 			return nil
 		})
 		count := atomic.AddInt32(connCounter, 1)
@@ -38,7 +63,7 @@ func ws(w http.ResponseWriter, r *http.Request, gen CmdGenerator, connCounter *i
 			err := "The number of connections reaches max threshold."
 			_ = c.WriteMessage(websocket.BinaryMessage, []byte("\x1b[31m"+err+"\x1b[0m"))
 			_ = c.Close()
-			log.Println(err)
+			Logger.Println(err)
 			return
 		}
 		finCh := make(chan bool, 2)
@@ -46,7 +71,7 @@ func ws(w http.ResponseWriter, r *http.Request, gen CmdGenerator, connCounter *i
 		if err != nil {
 			_ = c.WriteMessage(websocket.BinaryMessage, []byte("\x1b[31m"+"Unable to start target program."+"\x1b[0m"))
 			_ = c.Close()
-			log.Println(err)
+			Logger.Println(err)
 			return
 		}
 		// this close is only for close goroutines
@@ -72,12 +97,11 @@ func NewTTYd(conf Config) *TTYd {
 	}
 	connCounter := int32(0)
 	frontend, _ := fs.Sub(frontendFS, "frontend")
-	serveFS := frontend
 	fsList := []fs.FS{frontend, ConfigFS}
 	if conf.OtherFSList != nil {
 		fsList = append(fsList, conf.OtherFSList...)
-		serveFS = mergefs.Merge(fsList...)
 	}
+	serveFS := mergefs.Merge(fsList...)
 	ttyd.mux.Handle("/", onefile.New(serveFS, &onefile.Overwrite{
 		Fsys: nil,
 		Pair: map[string]string{},
@@ -86,7 +110,7 @@ func NewTTYd(conf Config) *TTYd {
 		ws(w, r, conf.Gen, &connCounter, conf.MaxConn)
 	})
 	ttyd.mux.HandleFunc("/themes.json", func(w http.ResponseWriter, r *http.Request) {
-		themes := ThemeList()
+		themes := ThemeList(serveFS)
 		encoded, err := json.Marshal(&themes)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

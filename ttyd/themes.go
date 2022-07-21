@@ -3,37 +3,17 @@ package ttyd
 import (
 	"fmt"
 	"io/fs"
-	"log"
-	"os"
 	"path/filepath"
 )
 
-var ConfigFS fs.FS
-
 var DefaultTheme = ""
 
-func init() {
-	confDir, err := os.UserConfigDir()
-	if err != nil {
-		log.Panicln(err)
-	}
-	confDir = filepath.Join(confDir, "go-ttyd")
-	if _, err := os.Stat(confDir); os.IsNotExist(err) {
-		err := os.MkdirAll(confDir, 0777)
-		if err != nil {
-			log.Panicln(err)
-		}
-	}
-
-	ConfigFS = os.DirFS(confDir)
-}
-
-func ThemeList() map[string]string {
+func ThemeList(fsys fs.FS) map[string]string {
 	ret := map[string]string{".": DefaultTheme}
-	if _, err := fs.Stat(ConfigFS, "themes"); err != nil {
+	if _, err := fs.Stat(fsys, "themes"); err != nil {
 		return ret
 	}
-	entries, err := fs.ReadDir(ConfigFS, "themes")
+	entries, err := fs.ReadDir(fsys, "themes")
 	if err != nil {
 		fmt.Println(err)
 		return ret
