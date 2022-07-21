@@ -1,4 +1,4 @@
-module go-ttyd
+module github.com/Script-OS/go-ttyd
 
 go 1.18
 
