@@ -27,13 +27,9 @@ func ws(w http.ResponseWriter, r *http.Request, gen CmdGenerator, connCounter *i
 		return
 	}
 	go func() {
-		defer func() {
-			_ = c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-		}()
 		log.Println("client connect")
 		c.SetCloseHandler(func(code int, text string) error {
 			log.Printf("client disconnect, reason: %d\n", code)
-			_ = c.Close()
 			return nil
 		})
 		count := atomic.AddInt32(connCounter, 1)
@@ -41,14 +37,23 @@ func ws(w http.ResponseWriter, r *http.Request, gen CmdGenerator, connCounter *i
 		if max > 0 && count > max {
 			err := "The number of connections reaches max threshold."
 			_ = c.WriteMessage(websocket.BinaryMessage, []byte("\x1b[31m"+err+"\x1b[0m"))
+			_ = c.Close()
 			log.Println(err)
 			return
 		}
-		err := ServePTY(c, gen())
+		finCh := make(chan bool, 2)
+		err := ServePTY(c, gen(), finCh)
 		if err != nil {
 			_ = c.WriteMessage(websocket.BinaryMessage, []byte("\x1b[31m"+"Unable to start target program."+"\x1b[0m"))
+			_ = c.Close()
 			log.Println(err)
+			return
 		}
+		// this close is only for close goroutines
+		_ = c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		<-finCh
+		<-finCh
+		_ = c.Close()
 	}()
 }
 

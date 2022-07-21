@@ -17,7 +17,7 @@ func logError(err error) {
 	}
 }
 
-func ServePTY(c *websocket.Conn, cmd *exec.Cmd) error {
+func ServePTY(c *websocket.Conn, cmd *exec.Cmd, finCh chan bool) error {
 	conn := &WsProtocol{c}
 	ptyFile, err := pty.Start(cmd)
 	if err != nil {
@@ -46,6 +46,7 @@ func ServePTY(c *websocket.Conn, cmd *exec.Cmd) error {
 				})
 			}
 		}
+		finCh <- true
 	}()
 	go func() {
 		defer cmd.Process.Kill()
@@ -65,6 +66,7 @@ func ServePTY(c *websocket.Conn, cmd *exec.Cmd) error {
 				break
 			}
 		}
+		finCh <- true
 	}()
 	_ = cmd.Wait()
 	return nil
