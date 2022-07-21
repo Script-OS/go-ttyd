@@ -83,9 +83,9 @@ func ws(w http.ResponseWriter, r *http.Request, gen CmdGenerator, connCounter *i
 }
 
 type Config struct {
-	OtherFSList []fs.FS
-	Gen         CmdGenerator
-	MaxConn     int32
+	OtherFSList []fs.FS      // Other fs that need to be served as static files.
+	Gen         CmdGenerator // A generator that creates the actual command.
+	MaxConn     int32        // Maximum number of connections. Unlimited if <= 0.
 }
 
 func NewTTYd(conf Config) *TTYd {
