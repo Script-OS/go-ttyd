@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"go-ttyd/ttyd"
+	"github.com/Script-OS/go-ttyd/ttyd"
 	"io/fs"
 	"log"
 	"net/http"
@@ -22,12 +22,9 @@ func prepareTerminfo() string {
 }
 
 func Redirect(w http.ResponseWriter, req *http.Request) {
-	// remove/add not default ports from req.Host
-	target := "https://" + req.Host + req.URL.Path
-	if len(req.URL.RawQuery) > 0 {
-		target += "?" + req.URL.RawQuery
-	}
-	log.Printf("nofound to: %s", target)
+	url := *req.URL
+	url.Scheme = "https"
+	target := url.String()
 	http.Redirect(w, req, target,
 		// see comments below and consider the codes 308, 302, or 301
 		http.StatusTemporaryRedirect)
@@ -47,14 +44,25 @@ func (arr *StringArray) Set(value string) error {
 func main() {
 	port := flag.Int("p", 0, "port that http serve on")
 	theme := flag.String("theme", "", "default theme")
-	SSL := flag.Bool("SSL", false, "open SSL or not, default is true")
+	SSL := flag.Bool("SSL", false, "use SSL or not, default is false")
 	crtFile := flag.String("crt", "https.crt", "path to https crt file")
 	keyFile := flag.String("key", "https.key", "path to https key file")
 	max := flag.Int("max", 0, "max number of connections, 0 means no limit")
 	statics := StringArray{}
 	flag.Var(&statics, "static", "folder to provide extra static files")
 
+	flag.CommandLine.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
+		fmt.Fprintln(flag.CommandLine.Output(), "  go-ttyd [options] <command> [<args of your command>...]")
+		fmt.Fprintln(flag.CommandLine.Output(), "Options:")
+		flag.PrintDefaults()
+	}
+
 	flag.Parse()
+	if flag.NArg() == 0 {
+		flag.CommandLine.Usage()
+		return
+	}
 	cmdDesc := flag.Args()
 
 	infoDir := prepareTerminfo()
