@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"crypto/sha256"
 	"flag"
 	"fmt"
 	"github.com/Script-OS/go-ttyd/ttyd"
@@ -14,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 const newTermName = "xterm-webmedia-256color"
@@ -36,71 +36,61 @@ func Redirect(w http.ResponseWriter, req *http.Request) {
 
 const CredentialBinName = "@login"
 
-func passwordHash(password string) string {
-	hash1 := sha256.New()
-	_, err := io.WriteString(hash1, password)
-	if err != nil {
-		log.Panicln(err.Error())
-	}
-	hash2 := sha256.New()
-	_, err = io.WriteString(hash2, fmt.Sprintf("%02x", hash1.Sum(nil)))
-	if err != nil {
-		log.Panicln(err.Error())
-	}
-	return fmt.Sprintf("%02x", hash2.Sum(nil))
-}
-
-func doCredential(hashed string, command []string) {
+func doCredential(credential string, command []string) {
+	faultCounter := 1
 	checked := func() bool {
-		const prompt = "Enter password:"
-		oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
-		if err != nil {
-			return false
-		}
-		defer term.Restore(int(os.Stdin.Fd()), oldState)
-		fmt.Print(prompt)
-		password := []rune{}
-		rd := bufio.NewReader(os.Stdin)
-		for {
-			if c, _, err := rd.ReadRune(); err != nil {
-				if err == io.EOF {
-					break
+		for faultCounter <= 3 {
+			const prompt = "Enter password:"
+			oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+			if err != nil {
+				return false
+			}
+			defer term.Restore(int(os.Stdin.Fd()), oldState)
+			fmt.Print(prompt)
+			password := []rune{}
+			rd := bufio.NewReader(os.Stdin)
+			for {
+				if c, _, err := rd.ReadRune(); err != nil {
+					if err == io.EOF {
+						break
+					} else {
+						fmt.Print("\r\n")
+						fmt.Print(err)
+						fmt.Print("\r\n")
+						return false
+					}
 				} else {
-					fmt.Print("\r\n")
-					fmt.Print(err)
-					fmt.Print("\r\n")
-					return false
-				}
-			} else {
-				finish := false
-				switch c {
-				case '\r':
-					fallthrough
-				case '\n':
-					fallthrough
-				case 0x04:
-					finish = true
-					break
-				case 0x03:
-					fmt.Print("^C\r\n")
-					return false
-				default:
-					password = append(password, c)
-				}
-				if finish {
-					break
+					finish := false
+					switch c {
+					case '\r':
+						fallthrough
+					case '\n':
+						fallthrough
+					case 0x04:
+						finish = true
+						break
+					case 0x03:
+						fmt.Print("^C\r\n")
+						return false
+					default:
+						password = append(password, c)
+					}
+					if finish {
+						break
+					}
 				}
 			}
+			if string(password) == credential {
+				fmt.Print("\033[2J\033[1;1H")
+				return true
+			} else {
+				time.Sleep(time.Second * 1)
+				fmt.Printf("\r\nWrong password. You tried %d/3 times\r\n", faultCounter)
+				faultCounter++
+			}
 		}
-		if passwordHash(string(password)) == hashed {
-			fmt.Print("\r")
-			fmt.Print(strings.Repeat(" ", len([]rune(prompt))))
-			fmt.Print("\r")
-			return true
-		} else {
-			fmt.Print("\r\nWrong password.\r\n")
-			return false
-		}
+		fmt.Print("\033[31mDisconnected\033[0m\r\n")
+		return false
 	}()
 	if checked {
 		cmd := exec.Command(command[0], command[1:]...)
@@ -133,7 +123,7 @@ func main() {
 	crtFile := flag.String("crt", "https.crt", "path to https crt file")
 	keyFile := flag.String("key", "https.key", "path to https key file")
 	max := flag.Int("max", 0, "max number of connections, 0 means no limit")
-	credential := flag.String("credential", "", "credential for authentication")
+	credential := flag.String("credit", "", "credential for authentication")
 	statics := StringArray{}
 	flag.Var(&statics, "static", "folder to provide extra static files")
 
@@ -170,12 +160,11 @@ func main() {
 	}
 
 	if *credential != "" {
-		hashedCredential := passwordHash(*credential)
 		implGen := generator
 		generator = func() *exec.Cmd {
 			cmd := implGen()
 			cmd.Path = os.Args[0]
-			cmd.Args = append([]string{CredentialBinName, hashedCredential}, cmd.Args...)
+			cmd.Args = append([]string{CredentialBinName, *credential}, cmd.Args...)
 			return cmd
 		}
 	}
