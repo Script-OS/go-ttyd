@@ -86,7 +86,6 @@ type Config struct {
 	OtherFSList []fs.FS      // Other fs that need to be served as static files.
 	Gen         CmdGenerator // A generator that creates the actual command.
 	MaxConn     int32        // Maximum number of connections. Unlimited if <= 0.
-	Auth        *AuthConfig  // Auth config if not nil, means that Auth is opened
 }
 
 func NewTTYd(conf Config) *TTYd {
@@ -102,7 +101,6 @@ func NewTTYd(conf Config) *TTYd {
 	if conf.OtherFSList != nil {
 		fsList = append(fsList, conf.OtherFSList...)
 	}
-
 	serveFS := mergefs.Merge(fsList...)
 	ttyd.mux.Handle("/", onefile.New(serveFS, &onefile.Overwrite{
 		Fsys: nil,
