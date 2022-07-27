@@ -66,19 +66,15 @@ func ws(w http.ResponseWriter, r *http.Request, gen CmdGenerator, connCounter *i
 			Logger.Println(err)
 			return
 		}
-		finCh := make(chan bool, 2)
-		err := ServePTY(c, gen(), finCh)
+		err := ServePTY(c, gen())
 		if err != nil {
 			_ = c.WriteMessage(websocket.BinaryMessage, []byte("\x1b[31m"+"Unable to start target program."+"\x1b[0m"))
 			_ = c.Close()
 			Logger.Println(err)
 			return
 		}
-		// this close is only for close goroutines
-		_ = c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-		<-finCh
-		<-finCh
 		_ = c.Close()
+		Logger.Println("client finished")
 	}()
 }
 

@@ -1,8 +1,10 @@
 package ttyd
 
 import (
+	"errors"
 	"github.com/creack/pty"
 	"github.com/gorilla/websocket"
+	"net"
 	"os/exec"
 	"runtime"
 )
@@ -16,7 +18,7 @@ func logError(err error) {
 	}
 }
 
-func ServePTY(c *websocket.Conn, cmd *exec.Cmd, finCh chan bool) error {
+func ServePTY(c *websocket.Conn, cmd *exec.Cmd) error {
 	conn := &WsProtocol{c}
 	ptyFile, err := pty.Start(cmd)
 	if err != nil {
@@ -27,7 +29,7 @@ func ServePTY(c *websocket.Conn, cmd *exec.Cmd, finCh chan bool) error {
 		defer cmd.Process.Kill()
 		for {
 			msg, err := conn.Recv()
-			if _, ok := err.(*websocket.CloseError); ok {
+			if _, ok := err.(*websocket.CloseError); ok || errors.Is(err, net.ErrClosed) {
 				break
 			} else if err != nil {
 				logError(err)
@@ -45,7 +47,6 @@ func ServePTY(c *websocket.Conn, cmd *exec.Cmd, finCh chan bool) error {
 				})
 			}
 		}
-		finCh <- true
 	}()
 	go func() {
 		defer cmd.Process.Kill()
@@ -54,7 +55,7 @@ func ServePTY(c *websocket.Conn, cmd *exec.Cmd, finCh chan bool) error {
 			n, err := ptyFile.Read(buf)
 			if n > 0 {
 				err = c.WriteMessage(websocket.BinaryMessage, buf[:n])
-				if _, ok := err.(*websocket.CloseError); ok {
+				if _, ok := err.(*websocket.CloseError); ok || errors.Is(err, net.ErrClosed) {
 					break
 				} else if err != nil {
 					logError(err)
@@ -65,7 +66,6 @@ func ServePTY(c *websocket.Conn, cmd *exec.Cmd, finCh chan bool) error {
 				break
 			}
 		}
-		finCh <- true
 	}()
 	_ = cmd.Wait()
 	return nil
