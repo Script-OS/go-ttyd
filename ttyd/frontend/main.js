@@ -221,7 +221,7 @@ globalThis.loadTermFont = loadTermFont;
 globalThis.RenderFonts = [];
 
 window.addEventListener('load', async function () {
-    await loadTermFont("PureNerdFont", [{ url: "https://unpkg.com/@azurity/pure-nerd-font@1.0.0/PureNerdFont.woff2" }]);
+    await loadTermFont("PureNerdFont", [{ url: "https://cdn.jsdelivr.net/npm/@azurity/pure-nerd-font@1.0.0/PureNerdFont.woff2" }]);
     await prepareTheme();
     if (globalThis.RenderFonts.length == 1) {
         // only nerd-font prepared, use go mono as default font

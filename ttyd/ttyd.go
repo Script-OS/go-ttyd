@@ -39,14 +39,13 @@ func init() {
 }
 
 type TTYd struct {
-	mux *http.ServeMux
+	mux      *http.ServeMux
+	upgrader websocket.Upgrader
 }
 
 type CmdGenerator func() *exec.Cmd
 
-var upgrader = websocket.Upgrader{} // use default options
-
-func ws(w http.ResponseWriter, r *http.Request, gen CmdGenerator, connCounter *int32, max int32) {
+func ws(upgrader websocket.Upgrader, w http.ResponseWriter, r *http.Request, gen CmdGenerator, connCounter *int32, max int32) {
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		Logger.Print("upgrade:", err)
@@ -83,11 +82,13 @@ type Config struct {
 	OtherFSList []fs.FS      // Other fs that need to be served as static files.
 	Gen         CmdGenerator // A generator that creates the actual command.
 	MaxConn     int32        // Maximum number of connections. Unlimited if <= 0.
+	CheckOrigin func(r *http.Request) bool
 }
 
 func NewTTYd(conf Config) *TTYd {
 	ttyd := &TTYd{
-		mux: http.NewServeMux(),
+		mux:      http.NewServeMux(),
+		upgrader: websocket.Upgrader{CheckOrigin: conf.CheckOrigin},
 	}
 	if conf.MaxConn < 0 {
 		conf.MaxConn = 0
@@ -104,7 +105,7 @@ func NewTTYd(conf Config) *TTYd {
 		Pair: map[string]string{},
 	}, "/index.html"))
 	ttyd.mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		ws(w, r, conf.Gen, &connCounter, conf.MaxConn)
+		ws(ttyd.upgrader, w, r, conf.Gen, &connCounter, conf.MaxConn)
 	})
 	ttyd.mux.HandleFunc("/themes.json", func(w http.ResponseWriter, r *http.Request) {
 		themes := ThemeList(serveFS)

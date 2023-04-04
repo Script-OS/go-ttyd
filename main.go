@@ -124,6 +124,7 @@ func main() {
 	keyFile := flag.String("key", "https.key", "path to https key file")
 	max := flag.Int("max", 0, "max number of connections, 0 means no limit")
 	credential := flag.String("credit", "", "credential for authentication")
+	noCheckOrigin := flag.Bool("no-check-origin", false, "do not check origin")
 	statics := StringArray{}
 	flag.Var(&statics, "static", "folder to provide extra static files")
 
@@ -169,10 +170,16 @@ func main() {
 		}
 	}
 
+	var originChecker func(r *http.Request) bool = nil
+	if *noCheckOrigin {
+		originChecker = func(r *http.Request) bool { return true }
+	}
+
 	tty := ttyd.NewTTYd(ttyd.Config{
 		OtherFSList: fsList,
 		Gen:         generator,
 		MaxConn:     int32(*max),
+		CheckOrigin: originChecker,
 	})
 	portString := fmt.Sprintf(":%d", *port)
 	_, crtErr := os.Stat(*crtFile)
