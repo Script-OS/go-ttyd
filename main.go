@@ -28,7 +28,9 @@ func prepareTerminfo() string {
 func Redirect(w http.ResponseWriter, req *http.Request) {
 	url := *req.URL
 	url.Scheme = "https"
+	url.Host = req.Host
 	target := url.String()
+	//log.Println("url:", url, "target:", target, "host:", req.Host)
 	http.Redirect(w, req, target,
 		// see comments below and consider the codes 308, 302, or 301
 		http.StatusTemporaryRedirect)
