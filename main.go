@@ -117,7 +117,8 @@ func main() {
 		doCredential(os.Args[1], os.Args[2:])
 		return
 	}
-	port := flag.Int("p", 0, "port that http serve on")
+	host := flag.String("host", "", "host that http serve on, default is 0.0.0.0 ")
+	port := flag.Int("port", 0, "port that http serve on")
 	theme := flag.String("theme", "", "default theme")
 	SSL := flag.Bool("SSL", false, "use SSL or not, default is false")
 	crtFile := flag.String("crt", "https.crt", "path to https crt file")
@@ -181,15 +182,19 @@ func main() {
 		MaxConn:     int32(*max),
 		CheckOrigin: originChecker,
 	})
-	portString := fmt.Sprintf(":%d", *port)
+	portString := fmt.Sprintf("%s:%d", *host, *port)
 	_, crtErr := os.Stat(*crtFile)
 	_, keyErr := os.Stat(*keyFile)
 	if *SSL && (crtErr == nil && keyErr == nil) {
+		var jumpPortString string
 		if *port == 0 {
-			portString = fmt.Sprintf(":%d", 443)
+			portString = fmt.Sprintf("%s:%d", *host, 443)
+		} else {
+			jumpPortString = fmt.Sprintf("%s:%d", *host, *port+1)
+			log.Println("[+]http redirect port is", *port+1)
 		}
 		go func() {
-			http.ListenAndServe(":80", http.HandlerFunc(Redirect))
+			http.ListenAndServe(jumpPortString, http.HandlerFunc(Redirect))
 		}()
 		log.Fatal(http.ListenAndServeTLS(portString, *crtFile, *keyFile, tty))
 	} else {
