@@ -191,7 +191,7 @@ func main() {
 			portString = fmt.Sprintf("%s:%d", *host, 443)
 		} else {
 			jumpPortString = fmt.Sprintf("%s:%d", *host, *port+1)
-			log.Println("[+]http redirect port is", *port+1)
+			log.Println("[+]http redirect addr is", jumpPortString)
 		}
 		go func() {
 			http.ListenAndServe(jumpPortString, http.HandlerFunc(Redirect))
@@ -199,7 +199,7 @@ func main() {
 		log.Fatal(http.ListenAndServeTLS(portString, *crtFile, *keyFile, tty))
 	} else {
 		if *port == 0 {
-			portString = fmt.Sprintf(":%d", 80)
+			portString = fmt.Sprintf("%s:%d", *host, 80)
 		}
 		log.Fatal(http.ListenAndServe(portString, tty))
 	}
