@@ -121,6 +121,7 @@ func main() {
 	}
 	host := flag.String("host", "", "host that http serve on, default is 0.0.0.0 ")
 	port := flag.Int("port", 0, "port that http serve on")
+	portAlias := flag.Int("p", 0, "same as port, for compatibility with ttyd")
 	theme := flag.String("theme", "", "default theme")
 	SSL := flag.Bool("SSL", false, "use SSL or not, default is false")
 	crtFile := flag.String("crt", "https.crt", "path to https crt file")
@@ -144,6 +145,13 @@ func main() {
 		return
 	}
 	cmdDesc := flag.Args()
+
+	if *portAlias != 0 && *port != 0 {
+		log.Fatalln("option port and option p cannot be set at the same time")
+	}
+	if *port == 0 {
+		*port = *portAlias
+	}
 
 	infoDir := prepareTerminfo()
 
